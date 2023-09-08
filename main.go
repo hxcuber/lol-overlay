@@ -2,36 +2,38 @@ package main
 
 import (
 	"crypto/tls"
-	"fmt"
-	"github.com/hxcuber/lol-overlay/api/activeplayer"
-	"github.com/hxcuber/lol-overlay/api/game"
-	"github.com/hxcuber/lol-overlay/api/player"
+	"github.com/hxcuber/lol-overlay/controller"
+	"github.com/hxcuber/lol-overlay/repositories/datadragon"
+	"github.com/hxcuber/lol-overlay/repositories/liveclientdata"
+	"log"
 	"net/http"
 	"time"
 )
 
-const httpVer = "http"
-
 func main() {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+	log.Println("Starting up")
+	dataDragonReg := datadragon.New("https://ddragon.leagueoflegends.com/cdn/13.17.1/data/en_US")
+	liveClientDataReg := liveclientdata.New("https://127.0.0.1:2999/liveclientdata")
+	ctrl := controller.New(dataDragonReg, liveClientDataReg)
 	//goland:noinspection GoInfiniteFor
 	for {
-		ap, err := activeplayer.GetActivePlayer()
-		if err != nil {
-			continue
-		}
-
-		s, err := player.GetPlayerScore(ap.SummonerName)
-		if err != nil {
-			continue
-		}
-
-		cg, err := game.GetGameStats()
-		if err != nil {
-			continue
-		}
-
-		fmt.Printf("CS/min: %.1f, G/min: %.0f\n", float64(s.CreepScore)/(cg.GameTime/60.0), ap.CurrentGold/(cg.GameTime/60.0))
 		time.Sleep(time.Second * 5)
+		cspm, err := ctrl.GetActivePlayerCSPM()
+		if err != nil {
+			log.Printf("%+v\n", err)
+			continue
+		}
+		gpm, err := ctrl.GetActivePlayerGPM()
+		if err != nil {
+			log.Printf("%+v\n", err)
+			continue
+		}
+		cg, err := ctrl.GetCombatGold()
+		if err != nil {
+			log.Printf("%+v\n", err)
+			continue
+		}
 	}
 }
